@@ -22,7 +22,9 @@ For production apps, do step 1 from your backend so you control who can start ca
 ```ts
 import { OpenMicClient, OpenMicWebClient } from "@openmic/web-sdk";
 
-const openmic = new OpenMicClient("omic_pub_...");
+// Keep the key in your env/config, e.g. import.meta.env.VITE_OPENMIC_PUBLIC_KEY
+// (Vite) or process.env.NEXT_PUBLIC_OPENMIC_KEY (Next.js)
+const openmic = new OpenMicClient(OPENMIC_PUBLIC_KEY);
 const webClient = new OpenMicWebClient();
 
 // 1. Register the call — per-call dynamic variables personalize the prompt
