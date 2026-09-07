@@ -10,7 +10,6 @@ export {
   type ListCallsResult,
 } from "./api-client";
 export type {
-  CreateWebCallOptions,
   NodeTransitionEvent,
   OpenMicWebClientEvents,
   StartCallConfig,

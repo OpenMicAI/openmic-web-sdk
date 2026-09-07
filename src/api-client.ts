@@ -82,8 +82,9 @@ export class OpenMicError extends Error {
 }
 
 /**
- * Thin client for the OpenMic v2 API. Works in browsers and Node 18+.
- * Use a public key (omic_pub_...) in browsers; keep private keys server-side.
+ * Thin client for the OpenMic v2 API (Node 18+).
+ * Use it from your backend — your API key should never be shipped to browsers;
+ * the browser only needs the access_token from the create-web-call response.
  */
 export class OpenMicClient {
   private baseUrl: string;

@@ -12,22 +12,21 @@ npm install @openmic/web-sdk
 
 Starting a web call is two steps, like placing a phone call:
 
-1. **Register the call** with `POST /v2/create-web-call` (or `OpenMicClient.createWebCall`). This returns an `access_token`, the `livekit_url` to connect to, and the `call_id` you'll use to fetch the transcript and recording afterwards.
-2. **Join from the browser** with `OpenMicWebClient.startCall`.
+1. **Your backend registers the call** with `OpenMicClient.createWebCall` (wraps `POST /v2/create-web-call`), using your API key. It returns an `access_token`, the `livekit_url` to connect to, and the `call_id` you'll use to fetch the transcript and recording afterwards. Hand the first two to the browser.
+2. **The browser joins** with `OpenMicWebClient.startCall`.
 
-For production apps, do step 1 from your backend so you control who can start calls; for prototypes you can do both in the browser with your public key (`omic_pub_...`).
+**Your API key never leaves your server.** The browser only ever receives the `access_token` — a single-room LiveKit credential that expires in 15 minutes and can't call the OpenMic API.
 
 ## Quickstart
 
+Server side (e.g. an Express/Next.js route):
+
 ```ts
-import { OpenMicClient, OpenMicWebClient } from "@openmic/web-sdk";
+import { OpenMicClient } from "@openmic/web-sdk";
 
-// Keep the key in your env/config, e.g. import.meta.env.VITE_OPENMIC_PUBLIC_KEY
-// (Vite) or process.env.NEXT_PUBLIC_OPENMIC_KEY (Next.js)
-const openmic = new OpenMicClient(OPENMIC_PUBLIC_KEY);
-const webClient = new OpenMicWebClient();
+const openmic = new OpenMicClient(process.env.OPENMIC_API_KEY);
 
-// 1. Register the call — per-call dynamic variables personalize the prompt
+// Per-call dynamic variables personalize the prompt
 const call = await openmic.createWebCall({
   agent_uid: "your-agent-uid",
   dynamic_variables: {
@@ -37,14 +36,32 @@ const call = await openmic.createWebCall({
   customer_id: "attempt-42", // your own id, echoed on the call record
 });
 
-// 2. Join from the browser (call from a click handler so audio is unlocked)
-await webClient.startCall({
-  accessToken: call.access_token,
-  livekitUrl: call.livekit_url,
-});
+// Store call.call_id against your session, then return to the browser:
+// { access_token: call.access_token, livekit_url: call.livekit_url }
+```
 
-// 3. After the call: transcript, recording, analysis
-const details = await openmic.getCall(call.call_id);
+Browser side:
+
+```ts
+import { OpenMicWebClient } from "@openmic/web-sdk";
+
+const webClient = new OpenMicWebClient();
+const { access_token, livekit_url } = await fetch("/api/interview/start", {
+  method: "POST",
+}).then((res) => res.json());
+
+// Call from a click handler so audio is unlocked
+await webClient.startCall({
+  accessToken: access_token,
+  livekitUrl: livekit_url,
+});
+```
+
+After the call, back on the server:
+
+```ts
+const details = await openmic.getCall(callId);
+// details.transcript, details.recording_url, details.call_analysis
 ```
 
 The variables are substituted into the agent prompt wherever it says `{{candidate_name}}` / `{{role}}`, so one durable agent serves every call.
@@ -87,7 +104,7 @@ await webClient.startAudioPlayback();    // call from a tap handler if autoplay 
 
 ## Managing agents and calls
 
-`OpenMicClient` wraps the OpenMic v2 REST API — use it server-side with a private key to manage agents:
+`OpenMicClient` wraps the OpenMic v2 REST API — server-side, same API key:
 
 ```ts
 const agent = await openmic.createAgent({
