@@ -2,69 +2,6 @@ import { WebCall } from "./types";
 
 const DEFAULT_BASE_URL = "https://api.openmic.ai";
 
-export interface AgentConfig {
-  name?: string;
-  prompt?: string;
-  first_message?: string;
-  auto_first_message?: boolean;
-  voice_provider?: string;
-  voice?: string;
-  voice_model?: string;
-  voice_language?: string;
-  llm_model_name?: string;
-  llm_model_temperature?: number;
-  stt_provider?: string;
-  stt_model?: string;
-  stt_languages?: string[];
-  boosted_keywords?: string[];
-  post_call_webhook_url?: string;
-  pre_call_webhook_url?: string;
-  call_settings?: Record<string, unknown>;
-  advanced_settings?: Record<string, unknown>;
-  post_call_settings?: Record<string, unknown>;
-  [key: string]: unknown;
-}
-
-export interface Agent extends AgentConfig {
-  uid: string;
-}
-
-export interface Call {
-  call_type: "phonecall" | "webcall";
-  call_id: string;
-  agent_uid: string;
-  call_status: "registered" | "ongoing" | "ended" | "error";
-  from_number: string;
-  to_number: string;
-  direction: "inbound" | "outbound";
-  customer_id?: string;
-  start_timestamp?: number;
-  end_timestamp?: number;
-  duration_ms?: number;
-  transcript?: [string, string][];
-  recording_url?: string;
-  call_analysis?: Record<string, unknown>;
-  dynamic_variables?: Record<string, string>;
-  [key: string]: unknown;
-}
-
-export interface ListCallsQuery {
-  page_size?: number;
-  cursor?: string;
-  customer_id?: string;
-  agent_uid?: string;
-  from_date?: string;
-  to_date?: string;
-  call_status?: "registered" | "ongoing" | "ended" | "error";
-  call_type?: "phonecall" | "webcall";
-}
-
-export interface ListCallsResult {
-  calls: Call[];
-  has_more: boolean;
-  next_cursor?: string;
-}
-
 export interface CreateWebCallRequest {
   agent_uid: string;
   customer_id?: string;
@@ -82,8 +19,12 @@ export class OpenMicError extends Error {
 }
 
 /**
- * Thin client for the OpenMic v2 API. Works in browsers and Node 18+.
- * Use a public key (omic_pub_...) in browsers; keep private keys server-side.
+ * Registers web calls with the OpenMic API. Safe to use in browsers with your
+ * public key (omic_pub_...), or from your backend.
+ *
+ * Everything beyond starting a web call — managing agents, reading call logs,
+ * transcripts, and recordings — requires a secret key and belongs on your
+ * server, not in this SDK.
  */
 export class OpenMicClient {
   private baseUrl: string;
@@ -97,55 +38,13 @@ export class OpenMicClient {
 
   /** Register a web call and get the access token + LiveKit URL for the browser to join with */
   async createWebCall(request: CreateWebCallRequest): Promise<WebCall> {
-    return this.request("POST", "/v2/create-web-call", request);
-  }
-
-  async createAgent(config: AgentConfig): Promise<Agent> {
-    return this.request("POST", "/v2/agents", config);
-  }
-
-  async getAgent(uid: string): Promise<Agent> {
-    return this.request("GET", `/v2/agents/${encodeURIComponent(uid)}`);
-  }
-
-  async updateAgent(uid: string, config: AgentConfig): Promise<Agent> {
-    return this.request(
-      "PATCH",
-      `/v2/agents/${encodeURIComponent(uid)}`,
-      config,
-    );
-  }
-
-  async deleteAgent(uid: string): Promise<void> {
-    await this.request("DELETE", `/v2/agents/${encodeURIComponent(uid)}`);
-  }
-
-  /** Fetch a completed call's transcript, recording URL, and analysis */
-  async getCall(callId: string): Promise<Call> {
-    return this.request("GET", `/v2/call/${encodeURIComponent(callId)}`);
-  }
-
-  async listCalls(query?: ListCallsQuery): Promise<ListCallsResult> {
-    const params = new URLSearchParams();
-    for (const [key, value] of Object.entries(query ?? {})) {
-      if (value !== undefined) params.set(key, String(value));
-    }
-    const suffix = params.size > 0 ? `?${params.toString()}` : "";
-    return this.request("GET", `/v2/calls${suffix}`);
-  }
-
-  private async request<T>(
-    method: string,
-    path: string,
-    body?: unknown,
-  ): Promise<T> {
-    const response = await fetch(`${this.baseUrl}${path}`, {
-      method,
+    const response = await fetch(`${this.baseUrl}/v2/create-web-call`, {
+      method: "POST",
       headers: {
         Authorization: `Bearer ${this.apiKey}`,
-        ...(body !== undefined && { "Content-Type": "application/json" }),
+        "Content-Type": "application/json",
       },
-      ...(body !== undefined && { body: JSON.stringify(body) }),
+      body: JSON.stringify(request),
     });
 
     if (!response.ok) {
@@ -159,7 +58,6 @@ export class OpenMicClient {
       throw new OpenMicError(response.status, message);
     }
 
-    if (response.status === 204) return undefined as T;
-    return (await response.json()) as T;
+    return (await response.json()) as WebCall;
   }
 }
