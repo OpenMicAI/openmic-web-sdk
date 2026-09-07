@@ -1,6 +1,6 @@
 {
   "name": "@openmic/web-sdk",
-  "version": "0.1.1",
+  "version": "0.2.0",
   "description": "OpenMic browser SDK for building custom voice-call UIs with live transcription, call controls, and dynamic variables",
   "main": "./dist/index.js",
   "module": "./dist/index.mjs",

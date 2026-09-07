@@ -42,9 +42,6 @@ await webClient.startCall({
   accessToken: call.access_token,
   livekitUrl: call.livekit_url,
 });
-
-// 3. After the call: transcript, recording, analysis
-const details = await openmic.getCall(call.call_id);
 ```
 
 The variables are substituted into the agent prompt wherever it says `{{candidate_name}}` / `{{role}}`, so one durable agent serves every call.
@@ -85,23 +82,14 @@ await webClient.startAudioPlayback();    // call from a tap handler if autoplay 
 
 `startCall` also accepts `sampleRate`, `captureDeviceId`, `playbackDeviceId`, and `emitRawAudioSamples`.
 
-## Managing agents and calls
+## Post-call data and agent management
 
-`OpenMicClient` wraps the OpenMic v2 REST API — use it server-side with a private key to manage agents:
+This SDK deliberately covers only what is safe to run in a browser with a public key: registering and joining web calls. Everything that needs a secret key stays on your server:
 
-```ts
-const agent = await openmic.createAgent({
-  name: "Interviewer",
-  prompt: "You are interviewing {{candidate_name}} for the {{role}} position...",
-});
+- **Post-call data** — store `call.call_id` when you start the call, then fetch `GET /v2/call/{call_id}` from your backend for the transcript, recording URL, and analysis (or receive the post-call webhook).
+- **Creating and updating agents** — `POST /v2/agents` / `PATCH /v2/agents/{uid}` from your backend.
 
-await openmic.updateAgent(agent.uid, { prompt: "..." });
-await openmic.getAgent(agent.uid);
-await openmic.deleteAgent(agent.uid);
-
-await openmic.listCalls({ agent_uid: agent.uid, call_type: "webcall" });
-await openmic.getCall(callId);
-```
+A server SDK covering these is planned; until then use the REST API directly.
 
 ## Script tag (no build step)
 

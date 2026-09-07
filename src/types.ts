@@ -42,19 +42,6 @@ export type OpenMicWebClientEvents = {
   error: (message: string) => void;
 };
 
-export interface CreateWebCallOptions {
-  /** OpenMic API key (use a public key `omic_pub_...` in browsers) */
-  apiKey: string;
-  /** UID of the agent to call */
-  agentUid: string;
-  /** Per-call variables substituted into the agent prompt as {{variable}} */
-  dynamicVariables?: Record<string, string>;
-  /** Your own identifier echoed back on the call record and post-call webhook */
-  customerId?: string;
-  /** API base URL. Defaults to https://api.openmic.ai */
-  baseUrl?: string;
-}
-
 export interface WebCall {
   call_type: "webcall";
   call_id: string;
