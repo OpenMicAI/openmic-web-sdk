@@ -1,0 +1,50 @@
+{
+  "name": "@openmic/web-sdk",
+  "version": "0.1.0",
+  "description": "OpenMic browser SDK for building custom voice-call UIs with live transcription, call controls, and dynamic variables",
+  "main": "./dist/index.js",
+  "module": "./dist/index.mjs",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.mjs",
+      "require": "./dist/index.js"
+    }
+  },
+  "files": [
+    "dist/",
+    "README.md"
+  ],
+  "scripts": {
+    "build": "tsup",
+    "typecheck": "tsc --noEmit",
+    "prepublishOnly": "npm run build"
+  },
+  "keywords": [
+    "openmic",
+    "voice",
+    "ai",
+    "web-call",
+    "sdk",
+    "livekit",
+    "voice-agent"
+  ],
+  "author": "OpenMic",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/openmicai/openmic-web-sdk"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "dependencies": {
+    "eventemitter3": "^5.0.1",
+    "livekit-client": "^2.10.0"
+  },
+  "devDependencies": {
+    "tsup": "^8.3.5",
+    "typescript": "^5.7.2"
+  }
+}
