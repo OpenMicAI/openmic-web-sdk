@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>OpenMic Web SDK — Custom Interviewer Example</title>
+  <style>
+    body { font-family: system-ui, sans-serif; max-width: 640px; margin: 40px auto; padding: 0 16px; color: #0f0f11; }
+    label { display: block; margin: 12px 0 4px; font-size: 13px; font-weight: 600; }
+    input { width: 100%; padding: 8px; border: 1px solid #ccc; border-radius: 6px; box-sizing: border-box; }
+    button { margin: 16px 8px 0 0; padding: 10px 18px; border: none; border-radius: 8px; background: #9766ed; color: #fff; font-weight: 600; cursor: pointer; }
+    button:disabled { background: #ccc; cursor: not-allowed; }
+    #status { margin-top: 16px; font-size: 14px; color: #666; }
+    #speaking { display: inline-block; width: 10px; height: 10px; border-radius: 50%; background: #ccc; margin-right: 6px; }
+    #speaking.active { background: #22c55e; }
+    #transcript { margin-top: 16px; border: 1px solid #eee; border-radius: 8px; padding: 12px; height: 320px; overflow-y: auto; font-size: 14px; }
+    .turn { margin-bottom: 10px; }
+    .turn .role { font-weight: 700; font-size: 12px; text-transform: uppercase; color: #9766ed; }
+    .turn.user .role { color: #0ea5e9; }
+  </style>
+</head>
+<body>
+  <h1>AI Interviewer</h1>
+
+  <label>Public API key</label>
+  <input id="apiKey" placeholder="omic_pub_..." />
+  <label>Agent UID</label>
+  <input id="agentUid" placeholder="your-agent-uid" />
+  <label>Candidate name (dynamic variable {{candidate_name}})</label>
+  <input id="candidateName" value="Ada" />
+
+  <button id="startBtn">Start interview</button>
+  <button id="stopBtn" disabled>End interview</button>
+  <button id="muteBtn" disabled>Mute</button>
+
+  <div id="status"><span id="speaking"></span><span id="statusText">Idle</span></div>
+  <div id="transcript"></div>
+
+  <script src="../dist/web-sdk.standalone.global.js"></script>
+  <script>
+    const { OpenMicClient, OpenMicWebClient } = OpenMicSDK;
+    const webClient = new OpenMicWebClient();
+    let callId = null;
+    let muted = false;
+
+    const $ = (id) => document.getElementById(id);
+    const setStatus = (text) => { $("statusText").textContent = text; };
+
+    webClient.on("call_started", () => setStatus("Connected — waiting for interviewer..."));
+    webClient.on("call_ready", () => setStatus("Interview in progress"));
+    webClient.on("call_ended", () => {
+      setStatus("Interview ended" + (callId ? ` — call_id ${callId}` : ""));
+      $("startBtn").disabled = false;
+      $("stopBtn").disabled = true;
+      $("muteBtn").disabled = true;
+      $("speaking").classList.remove("active");
+    });
+    webClient.on("agent_start_talking", () => $("speaking").classList.add("active"));
+    webClient.on("agent_stop_talking", () => $("speaking").classList.remove("active"));
+    webClient.on("error", (message) => setStatus("Error: " + message));
+
+    webClient.on("update", (event) => {
+      const container = $("transcript");
+      container.innerHTML = event.transcript
+        .map(
+          (turn) =>
+            `<div class="turn ${turn.role}"><div class="role">${
+              turn.role === "agent" ? "Interviewer" : "Candidate"
+            }</div><div>${turn.content}</div></div>`,
+        )
+        .join("");
+      container.scrollTop = container.scrollHeight;
+    });
+
+    $("startBtn").onclick = async () => {
+      try {
+        $("startBtn").disabled = true;
+        setStatus("Registering call...");
+
+        const openmic = new OpenMicClient($("apiKey").value.trim());
+        const call = await openmic.createWebCall({
+          agent_uid: $("agentUid").value.trim(),
+          dynamic_variables: { candidate_name: $("candidateName").value.trim() },
+        });
+        callId = call.call_id;
+
+        setStatus("Connecting...");
+        await webClient.startCall({
+          accessToken: call.access_token,
+          livekitUrl: call.livekit_url,
+        });
+
+        $("stopBtn").disabled = false;
+        $("muteBtn").disabled = false;
+      } catch (err) {
+        setStatus("Error: " + err.message);
+        $("startBtn").disabled = false;
+      }
+    };
+
+    $("stopBtn").onclick = () => webClient.stopCall();
+
+    $("muteBtn").onclick = () => {
+      muted = !muted;
+      muted ? webClient.mute() : webClient.unmute();
+      $("muteBtn").textContent = muted ? "Unmute" : "Mute";
+    };
+  </script>
+</body>
+</html>
