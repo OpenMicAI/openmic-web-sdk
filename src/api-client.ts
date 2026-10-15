@@ -51,7 +51,10 @@ export class OpenMicClient {
       let message = `Request failed with status ${response.status}`;
       try {
         const data = await response.json();
-        if (data && typeof data.error === "string") message = data.error;
+        // The API puts the human-readable reason in `message` and a short
+        // label ("Unauthorized", "Forbidden") or the reason in `error`.
+        if (data && typeof data.message === "string") message = data.message;
+        else if (data && typeof data.error === "string") message = data.error;
       } catch {
         // non-JSON error body
       }
